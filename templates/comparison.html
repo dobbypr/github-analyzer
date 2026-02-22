@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Comparison - GitHub Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .metric-card { @apply bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-center; }
+        .winner { @apply ring-2 ring-green-500 bg-green-50; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">📊 Repository Comparison</h1>
+                <div class="flex gap-4">
+                    <a href="/compare" class="text-blue-600 hover:text-blue-700 font-medium">Compare others</a>
+                    <a href="/" class="text-gray-600 hover:text-gray-900">← Home</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Repo Headers -->
+        <div class="grid gap-6 mb-8" style="grid-template-columns: repeat({{ repos | length }}, minmax(0, 1fr));">
+            {% for r in repos %}
+                {% if r.data %}
+                    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="{{ r.data.repo.owner.avatar_url }}" alt="" class="w-12 h-12 rounded-full">
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900">
+                                    <a href="{{ r.data.repo.html_url }}" target="_blank" class="hover:text-blue-600">
+                                        {{ r.data.repo.full_name }}
+                                    </a>
+                                </h2>
+                                <p class="text-sm text-gray-500">{{ r.data.repo.language or "No main language" }}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm line-clamp-2">{{ r.data.repo.description or "No description" }}</p>
+                    </div>
+                {% else %}
+                    <div class="bg-red-50 rounded-xl p-6 border border-red-200">
+                        <h2 class="text-xl font-bold text-red-700">{{ r.owner }}/{{ r.repo }}</h2>
+                        <p class="text-red-600 text-sm">{{ r.error }}</p>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Key Metrics Comparison -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Key Metrics</h3>
+            
+            {% set metrics = [
+                ('stars', '⭐ Stars', 'stargazers_count'),
+                ('forks', '🍴 Forks', 'forks_count'),
+                ('issues', '📋 Open Issues', 'open_issues_count'),
+                ('watchers', '👀 Watchers', 'watchers_count'),
+                ('size', '💾 Size (KB)', 'size')
+            ] %}
+            
+            {% for metric_id, metric_label, metric_key in metrics %}
+                {% set max_val = repos | map(attribute='data.repo.' + metric_key) | select | max %}
+                <div class="grid gap-6 mb-4 items-center" style="grid-template-columns: 200px repeat({{ repos | length }}, minmax(0, 1fr));">
+                    <div class="font-medium text-gray-700">{{ metric_label }}</div>
+                    {% for r in repos %}
+                        {% if r.data %}
+                            {% set val = r.data.repo[metric_key] %}
+                            <div class="metric-card {% if val == max_val and max_val > 0 %}winner{% endif %}">
+                                <div class="text-2xl font-bold text-gray-900">{{ "{:,}".format(val) }}</div>
+                                {% if val == max_val and max_val > 0 %}
+                                    <div class="text-xs text-green-600 font-medium">Winner 🏆</div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="metric-card opacity-50">-</div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Activity Score -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Activity Score</h3>
+            <div class="grid gap-6" style="grid-template-columns: repeat({{ repos | length }}, minmax(0, 1fr));">
+                {% for r in repos %}
+                    {% if r.data and r.data.commit_activity %}
+                        {% set total_commits = r.data.commit_activity | map(attribute='total') | sum %}
+                        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                            <div class="text-3xl font-bold text-gray-900 mb-2">{{ "{:,}".format(total_commits) }}</div>
+                            <div class="text-sm text-gray-600 mb-4">commits in last year</div>
+                            <div class="flex items-end gap-1 h-20">
+                                {% set max_week = r.data.commit_activity | map(attribute='total') | max %}
+                                {% for week in r.data.commit_activity[-26:] %}
+                                    {% set height = (week.total / max_week * 100) if max_week > 0 else 0 %}
+                                    <div class="flex-1 bg-blue-500 rounded-t min-w-[2px]" style="height: {{ height }}%;"></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-gray-100 rounded-lg p-6 border border-gray-200 text-center text-gray-500">
+                            No activity data
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Top Contributors -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Contributors</h3>
+            <div class="grid gap-6" style="grid-template-columns: repeat({{ repos | length }}, minmax(0, 1fr));">
+                {% for r in repos %}
+                    {% if r.data and r.data.contributors %}
+                        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                            <div class="space-y-3">
+                                {% for contributor in r.data.contributors[:5] %}
+                                    <div class="flex items-center gap-3">
+                                        <img src="{{ contributor.avatar_url }}" alt="" class="w-8 h-8 rounded-full">
+                                        <div class="flex-1 min-w-0">
+                                            <a href="https://github.com/{{ contributor.login }}" target="_blank" 
+                                               class="text-sm font-medium hover:text-blue-600 truncate block">
+                                                {{ contributor.login }}
+                                            </a>
+                                        </div>
+                                        <div class="text-sm text-gray-600">{{ contributor.contributions }}</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-gray-100 rounded-lg p-6 border border-gray-200 text-center text-gray-500">
+                            No contributor data
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Languages -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Language Breakdown</h3>
+            <div class="grid gap-6" style="grid-template-columns: repeat({{ repos | length }}, minmax(0, 1fr));">
+                {% for r in repos %}
+                    {% if r.data and r.data.languages %}
+                        {% set total = r.data.languages.values() | sum %}
+                        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                            <div class="space-y-2">
+                                {% for lang, bytes in r.data.languages.items() %}
+                                    {% set pct = (bytes / total * 100) | round(1) %}
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-24 text-sm text-gray-600 truncate">{{ lang }}</div>
+                                        <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" style="width: {{ pct }}%"></div>
+                                        </div>
+                                        <div class="w-12 text-sm text-gray-600 text-right">{{ pct }}%</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-gray-100 rounded-lg p-6 border border-gray-200 text-center text-gray-500">
+                            No language data
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Releases -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Releases</h3>
+            <div class="grid gap-6" style="grid-template-columns: repeat({{ repos | length }}, minmax(0, 1fr));">
+                {% for r in repos %}
+                    {% if r.data and r.data.releases %}
+                        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                            <div class="space-y-3">
+                                {% for release in r.data.releases[:3] %}
+                                    <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                                        <a href="{{ release.html_url }}" target="_blank" 
+                                           class="font-medium text-blue-600 hover:underline text-sm">
+                                            {{ release.tag_name }}
+                                        </a>
+                                        <span class="text-xs text-gray-500">{{ release.published_at[:10] }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-gray-100 rounded-lg p-6 border border-gray-200 text-center text-gray-500">
+                            No recent releases
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Share -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200 text-center">
+            <button onclick="copyToClipboard()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition inline-flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                Copy Comparison Link
+            </button>
+        </div>
+    </main>
+
+    <script>
+        function copyToClipboard() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg';
+                toast.textContent = 'Link copied!';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            });
+        }
+    </script>
+</body>
+</html>

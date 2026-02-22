@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Repository Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        function analyzeRepo(e) {
+            e.preventDefault();
+            const input = document.getElementById('repo-input').value.trim();
+            if (!input) return;
+            
+            // Show loading state
+            const btn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('btn-spinner');
+            const inputField = document.getElementById('repo-input');
+            
+            btn.disabled = true;
+            btnText.textContent = 'Analyzing...';
+            spinner.classList.remove('hidden');
+            inputField.disabled = true;
+            
+            // Parse owner/repo from various formats
+            let owner, repo;
+            
+            if (input.includes('/')) {
+                // Could be URL or owner/repo
+                if (input.includes('github.com')) {
+                    // Extract from URL
+                    const match = input.match(/github\.com\/([^\/]+)\/([^\/\s]+)/);
+                    if (match) {
+                        owner = match[1];
+                        repo = match[2].replace(/\.git$/, '');
+                    }
+                } else {
+                    // owner/repo format
+                    const parts = input.split('/');
+                    owner = parts[0];
+                    repo = parts[1];
+                }
+            }
+            
+            if (owner && repo) {
+                // Small delay to show loading state
+                setTimeout(() => {
+                    window.location.href = `/analyze/${owner}/${repo}`;
+                }, 300);
+            } else {
+                // Reset state on error
+                btn.disabled = false;
+                btnText.textContent = 'Analyze Repository';
+                spinner.classList.add('hidden');
+                inputField.disabled = false;
+                alert('Please enter a valid GitHub repository (e.g., "owner/repo" or full URL)');
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-4xl mx-auto px-6 py-20">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-4">📊 GitHub Analyzer</h1>
+            <p class="text-xl text-gray-400">Beautiful insights for any repository</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-2xl p-8 shadow-2xl">
+            <form id="analyze-form" onsubmit="analyzeRepo(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Repository URL or owner/repo
+                    </label>
+                    <input 
+                        type="text" 
+                        id="repo-input"
+                        placeholder="e.g., openclaw/openclaw or https://github.com/openclaw/openclaw"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                </div>
+                <button 
+                    id="submit-btn"
+                    type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                    <span id="btn-text">Analyze Repository</span>
+                    <svg id="btn-spinner" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+
+            <div class="mt-6 pt-6 border-t border-gray-700 text-center">
+                <a href="/compare" class="text-blue-400 hover:text-blue-300 font-medium">Compare multiple repositories →</a>
+            </div>
+        </div>
+
+        <div class="mt-12 grid grid-cols-3 gap-6 text-center">
+            <div class="p-4">
+                <div class="text-3xl mb-2">⚡</div>
+                <h3 class="font-semibold">Fast</h3>
+                <p class="text-sm text-gray-400">Results in seconds</p>
+            </div>
+            <div class="p-4">
+                <div class="text-3xl mb-2">📈</div>
+                <h3 class="font-semibold">Detailed</h3>
+                <p class="text-sm text-gray-400">Comprehensive metrics</p>
+            </div>
+            <div class="p-4">
+                <div class="text-3xl mb-2">🔒</div>
+                <h3 class="font-semibold">Free</h3>
+                <p class="text-sm text-gray-400">No signup required</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
